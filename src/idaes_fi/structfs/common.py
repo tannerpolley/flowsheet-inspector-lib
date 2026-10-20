@@ -50,6 +50,7 @@ class ActionNames(Enum):
     GIT_HASH = "git_hash"
     PROGRESS = "progress"
     INPUTS = "inputs"
+    FLOWSHEET_GRAPH = "flowsheet_graph"
 
 
 class Steps:

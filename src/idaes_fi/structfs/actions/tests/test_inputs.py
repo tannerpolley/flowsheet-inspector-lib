@@ -2,7 +2,8 @@
 
 import idaes  # Load IDAES extensions before Pyomo.
 import pytest
-from pyomo.environ import value
+from pyomo.environ import Expression, Var, value
+from pyomo.core.base.units_container import UnitsError
 
 from ...fsrunner import FlowsheetRunner
 from ...tests import flash_flowsheet, hda_flowsheet
@@ -82,5 +83,25 @@ def test_inputs_report(flowsheet, unit_name, tmp_path, monkeypatch):
     assert any(
         key.startswith("composition[0.0,") and key.endswith("benzene]") for key in keys
     )
+    runner.model.fs.metric = Expression(expr=2 * pressure)
+    runner.annotate_var(
+        runner.model.fs.metric, key="metric", units="kPa", is_input=False
+    )
+    runner.model.fs.untyped = Var(initialize=300)
+    runner.annotate_var(runner.model.fs.untyped, key="untyped", units="K")
+    runner.annotate_var(pressure, key="label", units="Centipedes")
+    rows = {
+        row["key"]: row for row in runner.report()["actions"]["inputs"]["variables"]
+    }
+    assert rows["metric"]["value"] == 360
+    assert rows["metric"]["bounds"] == (None, None)
+    assert rows["metric"]["fixed"]
+    assert rows["untyped"]["value"] == 300
+    assert rows["untyped"]["units"] == "K"
+    assert rows["label"]["value"] == 180000
+    assert rows["label"]["units"] == "Centipedes"
+    runner.annotate_var(pressure, key="invalid", units="K")
+    with pytest.raises(UnitsError):
+        runner.report()
     runner.build(save_report=False)
     assert runner.get_action("inputs").report().variables == []

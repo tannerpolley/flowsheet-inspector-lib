@@ -36,6 +36,7 @@ __all__ = [
     "UnitModelReport",
     "Progress",
     "Inputs",
+    "FlowsheetGraph",
 ]
 
 _EXPORT_MODULES = {
@@ -54,6 +55,7 @@ _EXPORT_MODULES = {
     "UnitModelReport": "model_report",
     "Progress": "progress",
     "Inputs": "inputs",
+    "FlowsheetGraph": "flowsheet_graph",
 }
 
 

@@ -195,6 +195,10 @@ bounds, input/output flags and categories, rounding, and `rebuild`. `category`
 uses the input category for inputs and the output category for output-only rows.
 Values and native variable bounds are converted to declared units. Explicit
 `bounds` are metadata in those units and do not change the model's bounds.
+Existing custom display-unit labels and values without native physical units
+retain their original values. Recognized incompatible physical units raise an
+error. Output expressions are supported, with nullable bounds and their
+expression's fixed status.
 Uninitialized values are `null`. Indexed variables with multiple entries produce
 one row per entry, with keys such as `composition[0.0,benzene]`; a single entry
 keeps the declared key. A model without annotations emits an empty list.
@@ -203,3 +207,20 @@ keeps the declared key. A model without annotations emits an empty list.
 future in-process re-solve (default: `"solve_initial"`). `rebuild=True` marks
 structural inputs. These declarations do not themselves edit inputs or run a
 solve. A new build or `reset()` clears annotations from the previous model.
+
+## Flowsheet graph action
+
+The default `flowsheet_graph` action emits
+`report()["actions"]["flowsheet_graph"]` with `units` and `arcs` lists. Units have
+fully qualified `name`, Python `class_name`, `parent_block`, and `ports` (each with
+a unit-relative `name` and inferred `direction`). Direction is `in`, `out`,
+`bidirectional`, or `unknown`: directed Arcs determine direction first; otherwise
+port names containing `inlet` or `outlet` provide a fallback.
+
+Arcs have `name`, `source_unit`, `source_port`, `dest_unit`, `dest_port`, and
+`directed`. Undirected Arcs retain their declared endpoint order without inferring
+port direction. The action reads Pyomo Arc data directly, including IndexedArc
+entries, expanded Arcs, and Arcs on nested blocks. It includes IDAES units without
+connections, internal units with their parent relationship, and blocks that own
+ports. Empty models produce empty lists. Icon lookup and block collapsing are
+left to later consumers; no connectivity registry is required for this report.

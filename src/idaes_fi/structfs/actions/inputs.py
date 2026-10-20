@@ -15,7 +15,7 @@
 # publicly and display publicly, and to permit other to do so.
 #
 #################################################################################
-"""Stream table action."""
+"""Declared inputs and outputs action."""
 
 from pydantic import BaseModel, Field
 from pyomo.environ import units as pyunits, value
@@ -24,7 +24,7 @@ from ..action_base import Action
 
 
 class AnnotatedVariable(BaseModel):
-    """One declared input or output, with values in its declared units."""
+    """One declared input or output, with display metadata and current state."""
 
     key: str
     title: str
@@ -55,18 +55,29 @@ class Inputs(Action):
             items = component.items() if component.is_indexed() else [(None, component)]
             for index, variable in items:
                 native_units = pyunits.get_units(variable)
-                declared_units = getattr(pyunits, annotation["units"])
+                try:
+                    declared_units = getattr(pyunits, annotation["units"])
+                except AttributeError:
+                    # Existing annotations may use arbitrary display labels.
+                    declared_units = None
 
                 def converted(number):
-                    if number is None:
-                        return None
+                    if (
+                        number is None
+                        or declared_units is None
+                        or str(native_units) == "dimensionless"
+                    ):
+                        return number
                     return pyunits.convert_value(
                         number, from_units=native_units, to_units=declared_units
                     )
 
                 bounds = annotation["bounds"]
                 if bounds is None:
-                    bounds = tuple(converted(bound) for bound in variable.bounds)
+                    bounds = tuple(
+                        converted(bound)
+                        for bound in getattr(variable, "bounds", (None, None))
+                    )
                 row_key = key
                 if component.is_indexed() and len(component) > 1:
                     suffix = (
@@ -93,7 +104,7 @@ class Inputs(Action):
                     AnnotatedVariable(
                         key=row_key,
                         value=converted(value(variable, exception=False)),
-                        fixed=variable.fixed,
+                        fixed=variable.is_fixed(),
                         bounds=bounds,
                         category=annotation[
                             (
