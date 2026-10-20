@@ -25,9 +25,9 @@ classifiers = [
 ]
 
 dependencies = [
-    "idaes-pse @ git+https://github.com/IDAES/idaes-pse@main",
+    "idaes-pse >=2.13,<3",
     "pyomo >=6.9.5",
-    "idaes-connectivity @ git+https://github.com/prommis/idaes-connectivity.git",
+    "idaes-connectivity >=0.1,<0.2",
 ]
 
 [project.optional-dependencies]

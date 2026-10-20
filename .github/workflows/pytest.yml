@@ -27,12 +27,16 @@ jobs:
           black --check --diff src
 
   test:
-    name: Python ${{ matrix.python-version }}
+    name: Python ${{ matrix.python-version }} / IDAES ${{ matrix.idaes }}
     runs-on: ubuntu-22.04
     needs: code-formatting
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13", "3.14"]
+        idaes: ["2.13.0"]
+        include:
+          - python-version: "3.13"
+            idaes: main
 
     steps:
       - name: Set up Conda environment
@@ -51,7 +55,12 @@ jobs:
           cache: pip
 
       - name: Install package
-        run: python -m pip install ".[dev]"
+        run: |
+          if [ "${{ matrix.idaes }}" = main ]; then
+            python -m pip install ".[dev]" 'idaes-pse @ git+https://github.com/IDAES/idaes-pse@main'
+          else
+            python -m pip install ".[dev]" 'idaes-pse==${{ matrix.idaes }}'
+          fi
 
       - name: Install extensions
         shell: bash -l {0}
