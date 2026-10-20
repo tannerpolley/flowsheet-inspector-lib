@@ -22,7 +22,6 @@ in `FlowsheetRunner`.
 
 # stdlib
 import argparse
-from copy import deepcopy
 from enum import Enum
 import inspect
 import logging
@@ -40,7 +39,7 @@ from idaes.core.solvers import get_solver
 from idaes_fi.structfs.actions.progress import Progress
 
 try:
-    from idaes_connectivity import Connectivity
+    from idaes_connectivity.base import Connectivity
     from idaes_connectivity.jupyter import display_connectivity
 except ImportError:
     Connectivity = None
@@ -156,6 +155,7 @@ class BaseFlowsheetRunner(Runner):
         solver_options: dict | None = None,
         steps: Sequence[str] | None = None,
         allow_user_steps: bool = False,
+        resolve_from: str = "solve_initial",
         **target_kw,
     ):
         """Constructor
@@ -166,6 +166,7 @@ class BaseFlowsheetRunner(Runner):
             solver_options: Options to pass to the solver
             steps: List of step names to run. If None (the default), use `STEPS`. If empty,
                    then dynamically set the list of steps as they are added.
+            resolve_from: First step for a later in-process re-solve; stored only.
             target_kw: Keyword arguments to set the report target (e.g., module, filename, filedir, hash)
         """
         if steps is None:
@@ -174,6 +175,7 @@ class BaseFlowsheetRunner(Runner):
         self._solver, self._tee = solver, tee
         self._solver_options = solver_options or {}
         self._ann = {}
+        self.resolve_from = self.normalize_name(resolve_from)
         super().__init__(steps)  # needs to be here
         # This allows things like 'name', 'module', and even 'tags', to be
         # passed directly as keywords to the constructor
@@ -222,6 +224,7 @@ class BaseFlowsheetRunner(Runner):
             or self._context.model is None
         ):
             self._context.model = self._create_model()
+            self._ann.clear()
 
         # replace first/last with before/after, if present
         if before is not None:
@@ -250,6 +253,7 @@ class BaseFlowsheetRunner(Runner):
     def reset(self):
         """Reset the runner context to its initial state."""
         self._context = Context(solver=self._solver, tee=self._tee, model=None)
+        self._ann.clear()
 
     def _create_model(self):
         m = ConcreteModel()
@@ -281,6 +285,8 @@ class BaseFlowsheetRunner(Runner):
         is_output: bool = True,
         input_category: str = "main",
         output_category: str = "main",
+        bounds: tuple[float | None, float | None] | None = None,
+        rebuild: bool = False,
     ) -> object:
         """Annotate a Pyomo variable.
 
@@ -295,6 +301,8 @@ class BaseFlowsheetRunner(Runner):
             is_output: Is this variable an output
             input_category: Name of input grouping to display under
             output_category: Name of output grouping to display under
+            bounds: Optional input limits in the declared units. Defaults to variable bounds.
+            rebuild: Whether changing this input requires rebuilding the model.
 
         Returns:
              Input block (for chaining)
@@ -307,18 +315,25 @@ class BaseFlowsheetRunner(Runner):
 
         qual_name = variable.name
         key = key or variable.name
+        unit_variable = (
+            next(iter(variable.values()), variable)
+            if variable.is_indexed()
+            else variable
+        )
 
         self._ann[key] = {
             "var": variable,
             "fullname": qual_name,
             "title": title or qual_name,
             "description": desc or qual_name,
-            "units": units or str(pyunits.get_units(variable)),
+            "units": units or str(pyunits.get_units(unit_variable)),
             "rounding": rounding,
             "is_input": is_input,
             "is_output": is_output,
             "input_category": input_category,
             "output_category": output_category,
+            "bounds": bounds,
+            "rebuild": rebuild,
         }
 
         return variable
@@ -326,7 +341,7 @@ class BaseFlowsheetRunner(Runner):
     @property
     def annotated_vars(self) -> dict[str,]:
         """Get (a copy of) the annotated variables."""
-        return deepcopy(self._ann)
+        return {key: annotation.copy() for key, annotation in self._ann.items()}
 
 
 class DiagnosticReportType(Enum):
@@ -359,6 +374,7 @@ class FlowsheetRunner(BaseFlowsheetRunner):
             UnitDofChecker,
             UnitModelReport,
             Progress,
+            Inputs,
         )
 
         super().__init__(**kwargs)
@@ -379,6 +395,7 @@ class FlowsheetRunner(BaseFlowsheetRunner):
         self.add_action(ActionNames.TIMINGS.value, Timer)
         self.add_action(ActionNames.GIT_HASH.value, GitHash, caller_file)
         self.add_action(ActionNames.PROGRESS.value, Progress)
+        self.add_action(ActionNames.INPUTS.value, Inputs)
 
     def build(self, **kwargs):
         """Run just the build step"""

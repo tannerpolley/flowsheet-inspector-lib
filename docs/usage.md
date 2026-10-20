@@ -176,3 +176,30 @@ def run_flowsheet(
 Usage in Jupyter is the same as in a Python program. In this environment the
 `fi_main` decorator may be handy. For a full example, see this
 [example Jupyter notebook](usage_nb).
+
+## Annotating inputs and outputs
+
+Declare variables with `FS.annotate_var` in the build or operating-conditions step:
+
+```python
+FS.annotate_var(m.fs.feed.flow_vol[0], key="feed_flow", title="Brine feed",
+                units="L/h", is_input=True, is_output=False,
+                input_category="Feed", bounds=(0.1, 10), rebuild=False)
+FS.annotate_var(m.fs.costing.LCOP, key="lcop", title="Product cost",
+                is_input=False, is_output=True, output_category="Economics")
+```
+
+The default `inputs` action emits `report()["actions"]["inputs"]["variables"]`.
+Each row contains the key, title, description, units, current value, fixed status,
+bounds, input/output flags and categories, rounding, and `rebuild`. `category`
+uses the input category for inputs and the output category for output-only rows.
+Values and native variable bounds are converted to declared units. Explicit
+`bounds` are metadata in those units and do not change the model's bounds.
+Uninitialized values are `null`. Indexed variables with multiple entries produce
+one row per entry, with keys such as `composition[0.0,benzene]`; a single entry
+keeps the declared key. A model without annotations emits an empty list.
+
+`FlowsheetRunner(resolve_from="initialize")` records the first step to use for a
+future in-process re-solve (default: `"solve_initial"`). `rebuild=True` marks
+structural inputs. These declarations do not themselves edit inputs or run a
+solve. A new build or `reset()` clears annotations from the previous model.

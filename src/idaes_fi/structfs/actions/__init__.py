@@ -35,6 +35,7 @@ __all__ = [
     "UnitDofType",
     "UnitModelReport",
     "Progress",
+    "Inputs",
 ]
 
 _EXPORT_MODULES = {
@@ -52,6 +53,7 @@ _EXPORT_MODULES = {
     "UnitDofType": "unit_dof_checker",
     "UnitModelReport": "model_report",
     "Progress": "progress",
+    "Inputs": "inputs",
 }
 
 

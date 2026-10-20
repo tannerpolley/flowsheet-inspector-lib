@@ -47,12 +47,12 @@ def test_db_version(tmpdb):
     db.add_report(report_data, name="db_test")
 
     # change minor version in DB
-    new_ver = db.MINOR_VERSION + 1
     update_statement = f"UPDATE {db.VERSION_TABLE} SET minor = ?"
-    with db._connect() as conn:
-        conn.execute(update_statement, (new_ver,))
-    # check that still ok
-    db.test_connection()
+    for new_ver in (db.MINOR_VERSION - 1, db.MINOR_VERSION + 1):
+        with db._connect() as conn:
+            conn.execute(update_statement, (new_ver,))
+        # Additive reports remain readable in either minor-version direction.
+        db.test_connection()
 
     # change major version expect failure
     new_ver = db.MAJOR_VERSION + 1

@@ -59,7 +59,7 @@ class ReportDB:
     # columns), MAJOR for incompatible ones (dropped/retyped columns, changed
     # relationships)
     MAJOR_VERSION = 1
-    MINOR_VERSION = 1  # 1.1: added `status` table and its `solve_ok` column
+    MINOR_VERSION = 2  # 1.2: additive inputs and flowsheet_graph action reports
     VERSION_TABLE = "version"
 
     RPT_TABLE = "reports"

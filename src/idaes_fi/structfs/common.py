@@ -49,6 +49,7 @@ class ActionNames(Enum):
     TIMINGS = "timings"
     GIT_HASH = "git_hash"
     PROGRESS = "progress"
+    INPUTS = "inputs"
 
 
 class Steps:
